@@ -26,7 +26,7 @@
 1. **Клонируйте репозиторий:**
 
     ```bash
-    git clone https://github.com/yourusername/esp32p4-usb-qr-generator.git
+    git clone https://github.com/sign25893/esp32p4_usb_qr_gen.git
     cd esp32p4-usb-qr-generator
     ```
 
