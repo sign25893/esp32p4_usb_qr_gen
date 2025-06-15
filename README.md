@@ -1,83 +1,119 @@
-| Supported Targets | ESP32-P4 | ESP32-S2 | ESP32-S3 |
-| ----------------- | -------- | -------- | -------- |
 
-# USB Mass Storage Class example
+# 📦 ESP32-P4 USB QR Code Generator
 
-## Overview
+Этот проект демонстрирует, как использовать **ESP32-P4** для взаимодействия с внешней USB-флешкой и генерации **QR-кодов** в виде PNG-изображений прямо на неё.
 
-This example demonstrates usage of the MSC (Mass Storage Class) to access storage on a USB flash drive. Upon connection of the flash drive, it is mounted to the Virtual filesystem. The following example operations are then performed:
+## 🚀 Возможности
 
-1. Print device info (capacity, sectors size, and count...)
-2. List all folders and files in the root directory of the USB flash drive
-3. Create `ESP` subdirectory (if not present already), as well as a `text.txt` file
-4. Run read/write benchmarks by transferring 1 MB of data to a `dummy` file
+- 📎 Подключение и монтирование USB Mass Storage (MSC) устройств (флешек).
+- 🧾 Автоматическое создание директории `/usb/qr` и генерация **1 - 50 PNG файлов** с уникальными QR-кодами (UUID v4).
+- 🖨️ Отрисовка QR-кодов в виде PNG с помощью библиотеки `libpng`.
+- 👂 Обработка событий подключения/отключения устройств и кнопки выхода.
 
+---
 
-### USB Reconnections
+## 🧰 Требования
 
-The example is run in a loop so that it can demonstrate USB connection and reconnection handling. If you want to deinitialize the entire  USB Host Stack, you can short GPIO0 to GND. GPIO0 is usually mapped to a BOOT button, thus pressing the button will deinitialize the stack.
+- **ESP32-P4**
+- [ESP-IDF v5.4+](https://docs.espressif.com/projects/esp-idf/en/latest/esp32p4/get-started/index.html)
+- USB OTG-поддержка
+- Подключаемое USB устройство хранения данных (MSC)
 
+---
 
-### Hardware Required
+## 🛠️ Сборка и загрузка
 
-* Development board with USB capable ESP SoC (ESP32-S2/ESP32-S3)
-* A USB cable for Power supply and programming
-* A USB flash drive
+1. **Клонируйте репозиторий:**
 
-### Common Pin Assignments
+    ```bash
+    git clone https://github.com/yourusername/esp32p4-usb-qr-generator.git
+    cd esp32p4-usb-qr-generator
+    ```
 
-If your board doesn't have a USB A connector connected to the dedicated GPIOs, 
-you may have to DIY a cable and connect **D+** and **D-** to the pins listed below.
+2. **Выберите целевую платформу:**
+
+    ```bash
+    idf.py set-target esp32p4
+    ```
+
+3. **Соберите проект:**
+
+    ```bash
+    idf.py build
+    ```
+
+4. **Загрузите прошивку:**
+
+    ```bash
+    idf.py -p /dev/ttyUSB0 flash monitor
+    ```
+
+---
+
+## ⚙️ Использование
+
+1. Подключите USB-флешку к вашему ESP32-P4.
+2. Подождите, пока устройство будет смонтировано.
+3. Автоматически сгенерируются QR-коды и сохранятся в `/usb/qr/qr_N.png`.
+4. Нажатие кнопки GPIO0 приведёт к завершению работы задачи и размонтированию флешки.
+
+---
+
+## 🧪 Пример кода
+
+Функция, отвечающая за генерацию QR PNG:
+
+```c
+void usb_generate_qr_to_flash(void) {
+    if (usb_mount && !qr_generated) {
+        ESP_LOGI(TAG, "Generating QR codes on USB flash");
+        file_operations();
+        qr_generated = true;
+    } else if (!usb_mount) {
+        ESP_LOGW(TAG, "USB device not present, skipping QR generation");
+    } else if (qr_generated) {
+        ESP_LOGI(TAG, "QR codes already generated on USB flash");
+    }
+}
+```
+
+---
+
+## 📂 Структура файлов на флешке
+
+После генерации структура будет следующей:
 
 ```
-ESP BOARD    USB CONNECTOR (type A)
-                   --
-                  | || VCC
-[GPIO19]  ------> | || D-
-[GPIO20]  ------> | || D+
-                  | || GND
-                   --
+/usb/
+└── qr/
+    ├── qr_0.png
+    ├── qr_1.png
+    ├── ...
+    └── qr_49.png
 ```
 
-Additionally, GPIO0 can be shorted to ground in order to deinitialize USB stack. 
+---
 
-### Build and Flash
+## 📸 Пример изображения
 
-Build the project and flash it to the board, then run monitor tool to view serial output:
+Каждое изображение представляет QR-код, сгенерированный из UUIDv4 и отрисованный как PNG-изображение размером 116x116 пикселей (при `png_scale = 4`).
 
-```
-idf.py -p PORT flash monitor
-```
+---
 
-(To exit the serial monitor, type ``Ctrl-]``.)
+## 📋 Зависимости
 
-See the Getting Started Guide for full steps to configure and use ESP-IDF to build projects.
+- `esp_qrcode` — встроенная библиотека генерации QR-кодов
+- `libpng` — генерация PNG-файлов
+- `msc_host` — USB Mass Storage Host драйвер ESP-IDF
 
-## Example Output
+---
 
-```
-...
-I (380) example: Waiting for USB flash drive to be connected
-I (790) example: MSC device connected
-...
-Device info:
-         Capacity: 29339 MB
-         Sector size: 512
-         Sector count: 60088319
-         PID: 0x5595
-         VID: 0x0781
-         iProduct:  SanDisk 3.2Gen1
-         iManufacturer:  USB
-         iSerialNumber: 0401545df64623a907abf299bae54c9
-I (990) example: ls command output:
-SYSTEM~1
-ESP
-DUMMY
-I (1000) example: Reading file
-I (1010) example: Read from file '/usb/esp/test.txt': 'Hello World!'
-I (1030) example: Writing to file /usb/esp/dummy
-I (2160) example: Write speed 0.93 MiB/s
-I (2160) example: Reading from file /usb/esp/dummy
-I (3110) example: Read speed 1.10 MiB/s
-I (3140) example: Example finished, you can disconnect the USB flash drive
-```
+## 🔐 Лицензия
+
+Этот проект распространяется под лицензией **MIT**. См. файл [LICENSE](LICENSE) для подробностей.
+
+---
+
+## 💬 Обратная связь
+
+Открывайте issue или pull request, если хотите внести вклад или нашли баг.
